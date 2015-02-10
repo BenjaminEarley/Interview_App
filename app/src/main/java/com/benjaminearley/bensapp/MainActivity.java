@@ -1,5 +1,10 @@
 package com.benjaminearley.bensapp;
 
+import android.app.FragmentManager;
+import android.content.Context;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -9,11 +14,22 @@ import android.view.MenuItem;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.LatLng;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements LocationListener {
 
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+
+    private GoogleMap myMap;
+    LocationManager locationManager;
+    private double latitude = 0D;
+    private double longitude = 0D;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,12 +51,36 @@ public class MainActivity extends ActionBarActivity {
         toolbar.inflateMenu(R.menu.menu_main);
 
 
+        if (checkPlayServices()) {
+            FragmentManager myFragmentManager = getFragmentManager();
+            MapFragment myMapFragment
+                    = (MapFragment) myFragmentManager.findFragmentById(R.id.map);
+            myMap = myMapFragment.getMap();
+            myMap.setMyLocationEnabled(true);
+
+            UiSettings settings = myMap.getUiSettings();
+            settings.setAllGesturesEnabled(false);
+            settings.setMyLocationButtonEnabled(false);
+            settings.setZoomControlsEnabled(false);
+        }
+
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         checkPlayServices();
+        Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        if (checkPlayServices()) {
+            CameraPosition cameraPosition = new CameraPosition.Builder().target(
+                    new LatLng(location.getLatitude(),location.getLongitude())).zoom(16).build();
+
+            myMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        }
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
 
     }
 
@@ -60,7 +100,7 @@ public class MainActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_refresh) {
             return true;
         }
 
@@ -85,5 +125,35 @@ public class MainActivity extends ActionBarActivity {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+
+        if (checkPlayServices()) {
+            CameraPosition cameraPosition = new CameraPosition.Builder().target(
+                    new LatLng(latitude,longitude)).zoom(16).build();
+
+            myMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        }
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
     }
 }
