@@ -1,23 +1,25 @@
 package com.benjaminearley.bensapp;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.FragmentManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.util.Log;
 
-import java.net.URI;
 import java.util.HashMap;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
@@ -93,11 +95,26 @@ public class MainActivity extends ActionBarActivity
     protected void onResume() {
         super.onResume();
         checkPlayServices();
+
         Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 
-        moveCamera(location);
+        if (isLocationEnabled(this)) {
+            moveCamera(location);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+        }
+        else {
+            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+            alertDialog.setTitle("Alert");
+            alertDialog.setMessage("Please Turn On Location Services and Restart App");
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
+        }
 
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
 
         file_maps.put("image a", R.drawable.a);
         file_maps.put("image b", R.drawable.b);
@@ -120,7 +137,7 @@ public class MainActivity extends ActionBarActivity
                     .setOnSliderClickListener(this);
 
 
-            //add your extra information
+            //adding drawable value for dialog
             textSliderView.getBundle()
                     .putInt("extra", file_maps.get(name));
 
@@ -212,6 +229,7 @@ public class MainActivity extends ActionBarActivity
         d.show();
 
         ImageView image = (ImageView) d.findViewById(R.id.imageView);
+        //Grabs Drawable value, converts for a drawable object and sets the dialog image to that drawable
         image.setImageDrawable(getResources().getDrawable(baseSliderView.getBundle().getInt("extra")));
 
         ImageButton close_btn = (ImageButton) d.findViewById(R.id.close_button);
@@ -230,5 +248,27 @@ public class MainActivity extends ActionBarActivity
 
             myMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
+    }
+
+    public static boolean isLocationEnabled(Context context) {
+        int locationMode = 0;
+        String locationProviders;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            try {
+                locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);
+
+            } catch (Settings.SettingNotFoundException e) {
+                e.printStackTrace();
+            }
+
+            return locationMode != Settings.Secure.LOCATION_MODE_OFF;
+
+        }else{
+            locationProviders = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+            return !TextUtils.isEmpty(locationProviders);
+        }
+
+
     }
 }
