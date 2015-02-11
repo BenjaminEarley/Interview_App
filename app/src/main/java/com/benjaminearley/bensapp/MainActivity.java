@@ -1,17 +1,25 @@
 package com.benjaminearley.bensapp;
 
+import android.app.Dialog;
 import android.app.FragmentManager;
 import android.content.Context;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+
+import java.net.URI;
 import java.util.HashMap;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 
 import com.daimajia.slider.library.SliderTypes.BaseSliderView;
 import com.daimajia.slider.library.SliderTypes.TextSliderView;
@@ -30,6 +38,7 @@ public class MainActivity extends ActionBarActivity
         implements LocationListener, BaseSliderView.OnSliderClickListener {
 
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+    HashMap<String,Integer> file_maps = new HashMap<>();
     private GoogleMap myMap;
     LocationManager locationManager;
     private SliderLayout mDemoSlider;
@@ -90,8 +99,6 @@ public class MainActivity extends ActionBarActivity
 
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
 
-        HashMap<String,Integer> file_maps = new HashMap<>();
-
         file_maps.put("image a", R.drawable.a);
         file_maps.put("image b", R.drawable.b);
         file_maps.put("image c", R.drawable.c);
@@ -112,9 +119,11 @@ public class MainActivity extends ActionBarActivity
                     .setScaleType(BaseSliderView.ScaleType.Fit)
                     .setOnSliderClickListener(this);
 
+
             //add your extra information
             textSliderView.getBundle()
-                    .putString("extra",name);
+                    .putInt("extra", file_maps.get(name));
+
 
             mDemoSlider.addSlider(textSliderView);
         }
@@ -197,6 +206,20 @@ public class MainActivity extends ActionBarActivity
 
     @Override
     public void onSliderClick(BaseSliderView baseSliderView) {
+
+        final Dialog d = new Dialog(this,R.style.CustomDialogTheme);
+        d.setContentView(R.layout.custom_dialog);
+        d.show();
+
+        ImageView image = (ImageView) d.findViewById(R.id.imageView);
+        image.setImageDrawable(getResources().getDrawable(baseSliderView.getBundle().getInt("extra")));
+
+        ImageButton close_btn = (ImageButton) d.findViewById(R.id.close_button);
+        close_btn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                d.dismiss();
+            }
+        });
 
     }
 
