@@ -5,26 +5,38 @@ import android.app.Dialog;
 import android.app.FragmentManager;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
-
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-
+import android.widget.Toast;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.daimajia.slider.library.SliderTypes.BaseSliderView;
-import com.daimajia.slider.library.SliderTypes.TextSliderView;
+import com.daimajia.slider.library.SliderTypes.DefaultSliderView;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -33,23 +45,22 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
-
 import com.daimajia.slider.library.SliderLayout;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MainActivity extends ActionBarActivity
         implements LocationListener, BaseSliderView.OnSliderClickListener {
 
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
-    HashMap<String,Integer> file_maps = new HashMap<>();
+    HashMap<Integer, String> photo_maps = new HashMap<>();
     private GoogleMap myMap;
     LocationManager locationManager;
     private SliderLayout mDemoSlider;
     private double latitude = 0D;
     private double longitude = 0D;
-
-    int images[]= {R.drawable.a, R.drawable.b, R.drawable.c,
-            R.drawable.d, R.drawable.e, R.drawable.f, R.drawable.g,
-            R.drawable.h, R.drawable.z};
+    private ArrayList<Photo> photos = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +75,23 @@ public class MainActivity extends ActionBarActivity
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 // Handle the menu item
-                return true;
+                switch(item.getItemId())
+                {
+                    case R.id.action_refresh:
+                        mDemoSlider.removeAllSliders();
+                        photos.clear();
+                        getFlickrPhotoData();
+                        final Handler handler = new Handler();
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                setFlickrSlideshowPhotos();
+                            }
+                        }, 4000);
+                        return true;
+
+                }
+                return false;
             }
         });
 
@@ -97,10 +124,13 @@ public class MainActivity extends ActionBarActivity
         checkPlayServices();
 
         Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
 
         if (isLocationEnabled(this)) {
             moveCamera(location);
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+
         }
         else {
             AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
@@ -115,35 +145,16 @@ public class MainActivity extends ActionBarActivity
             alertDialog.show();
         }
 
+        getFlickrPhotoData();
 
-        file_maps.put("image a", R.drawable.a);
-        file_maps.put("image b", R.drawable.b);
-        file_maps.put("image c", R.drawable.c);
-        file_maps.put("image d", R.drawable.d);
-        file_maps.put("image e", R.drawable.e);
-        file_maps.put("image f", R.drawable.f);
-        file_maps.put("image g", R.drawable.g);
-        file_maps.put("image h", R.drawable.h);
-        file_maps.put("image z", R.drawable.z);
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                setFlickrSlideshowPhotos();
+            }
+        }, 4000);
 
-
-        for(String name : file_maps.keySet()){
-            TextSliderView textSliderView = new TextSliderView(this);
-            // initialize a SliderLayout
-            textSliderView
-                    .description(name)
-                    .image(file_maps.get(name))
-                    .setScaleType(BaseSliderView.ScaleType.Fit)
-                    .setOnSliderClickListener(this);
-
-
-            //adding drawable value for dialog
-            textSliderView.getBundle()
-                    .putInt("extra", file_maps.get(name));
-
-
-            mDemoSlider.addSlider(textSliderView);
-        }
 
     }
 
@@ -151,6 +162,7 @@ public class MainActivity extends ActionBarActivity
     protected void onPause() {
         super.onPause();
         mDemoSlider.removeAllSliders();
+        photos.clear();
     }
 
 
@@ -201,7 +213,6 @@ public class MainActivity extends ActionBarActivity
 
         latitude = location.getLatitude();
         longitude = location.getLongitude();
-
         moveCamera(location);
 
     }
@@ -229,8 +240,8 @@ public class MainActivity extends ActionBarActivity
         d.show();
 
         ImageView image = (ImageView) d.findViewById(R.id.imageView);
-        //Grabs Drawable value, converts for a drawable object and sets the dialog image to that drawable
-        image.setImageDrawable(getResources().getDrawable(baseSliderView.getBundle().getInt("extra")));
+        image.setImageBitmap(getBitmapFromURL(photo_maps.get(baseSliderView.getBundle().getInt("dialog"))));
+
 
         ImageButton close_btn = (ImageButton) d.findViewById(R.id.close_button);
         close_btn.setOnClickListener(new View.OnClickListener() {
@@ -247,7 +258,9 @@ public class MainActivity extends ActionBarActivity
                     new LatLng(location.getLatitude(),location.getLongitude())).zoom(17).build();
 
             myMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
         }
+
     }
 
     public static boolean isLocationEnabled(Context context) {
@@ -269,6 +282,121 @@ public class MainActivity extends ActionBarActivity
             return !TextUtils.isEmpty(locationProviders);
         }
 
+    }
+
+    private void getFlickrPhotoData() {
+
+        String urlJsonObj = "https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=5cc8cfbfccfc519295cb0d86ef63ae77&sort=interestingness-desc&accuracy=16&content_type=1&media=photos&has_geo=1&radius=1&format=json&nojsoncallback=1&per_page=15";
+        JsonObjectRequest jsonObjReq = new JsonObjectRequest(Request.Method.GET,
+                urlJsonObj + "&lat=" + latitude + "&lon=" + longitude, null, new Response.Listener<JSONObject>() {
+
+            @Override
+            public void onResponse(JSONObject response) {
+                Log.d("JSON Request", response.toString());
+                int _size;
+                try {
+                    // Parsing json object response
+
+                    JSONObject JSONPhotos = response.getJSONObject("photos");
+                    int numberOfPhotos = JSONPhotos.getInt("total");
+
+                    if (numberOfPhotos > 9)
+                        _size = 9;
+                    else
+                        _size = numberOfPhotos;
+
+                    JSONArray JSONPhotoList = JSONPhotos.getJSONArray("photo");
+
+                    for (int i = 0; i < _size; i++) {
+                        Photo photo = new Photo();
+
+                        JSONObject JSONPhoto = (JSONObject) JSONPhotoList.get(i);
+                        photo.id = JSONPhoto.getString("id");
+                        photo.owner = JSONPhoto.getString("owner");
+                        photo.secret = JSONPhoto.getString("secret");
+                        photo.server = JSONPhoto.getString("server");
+                        photo.farm = JSONPhoto.getString("farm");
+                        photos.add(photo);
+
+
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(),
+                            "Error: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                VolleyLog.d("Volley Error", "Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(jsonObjReq);
+    }
+
+
+
+    private void setFlickrSlideshowPhotos() {
+
+        String imageURL;
+
+        for (int i = 0; i < photos.size(); i++ ){
+
+            imageURL = "https://farm" + photos.get(i).farm + ".staticflickr.com/" + photos.get(i).server + "/" + photos.get(i).id + "_" + photos.get(i).secret + "_z.jpg";
+
+            photo_maps.put(i, imageURL);
+
+            DefaultSliderView sliderView = new DefaultSliderView(this);
+
+            sliderView
+                    .image(imageURL)
+                    .setScaleType(BaseSliderView.ScaleType.CenterCrop)
+                    .setOnSliderClickListener(this);
+
+            sliderView.getBundle()
+                    .putInt("dialog", i);
+
+
+            mDemoSlider.addSlider(sliderView);
+
+        }
+
 
     }
+
+    public static Bitmap getBitmapFromURL(String src) {
+        try {
+            Log.e("src",src);
+            URL url = new URL(src);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setDoInput(true);
+            connection.connect();
+            InputStream input = connection.getInputStream();
+            Bitmap myBitmap = BitmapFactory.decodeStream(input);
+            Log.e("Bitmap","returned");
+            return myBitmap;
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("Exception",e.getMessage());
+            return null;
+        }
+    }
+
+    public class Photo {
+        public String id = "";
+        public String owner = "";
+        public String secret = "";
+        public String server = "";
+        public String farm = "";
+
+    }
+
 }
