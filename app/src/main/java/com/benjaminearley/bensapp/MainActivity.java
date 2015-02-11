@@ -9,9 +9,12 @@ import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import java.util.HashMap;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.daimajia.slider.library.SliderTypes.BaseSliderView;
+import com.daimajia.slider.library.SliderTypes.TextSliderView;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -21,15 +24,21 @@ import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
+import com.daimajia.slider.library.SliderLayout;
 
-public class MainActivity extends ActionBarActivity implements LocationListener {
+public class MainActivity extends ActionBarActivity
+        implements LocationListener, BaseSliderView.OnSliderClickListener {
 
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
-
     private GoogleMap myMap;
     LocationManager locationManager;
+    private SliderLayout mDemoSlider;
     private double latitude = 0D;
     private double longitude = 0D;
+
+    int images[]= {R.drawable.a, R.drawable.b, R.drawable.c,
+            R.drawable.d, R.drawable.e, R.drawable.f, R.drawable.g,
+            R.drawable.h, R.drawable.z};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +58,8 @@ public class MainActivity extends ActionBarActivity implements LocationListener 
         });
 
         toolbar.inflateMenu(R.menu.menu_main);
+        mDemoSlider = (SliderLayout)findViewById(R.id.slider);
+
 
 
         if (checkPlayServices()) {
@@ -60,12 +71,12 @@ public class MainActivity extends ActionBarActivity implements LocationListener 
 
             UiSettings settings = myMap.getUiSettings();
             settings.setAllGesturesEnabled(false);
+            settings.setTiltGesturesEnabled(true);
             settings.setMyLocationButtonEnabled(false);
             settings.setZoomControlsEnabled(false);
         }
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
 
     }
 
@@ -74,14 +85,46 @@ public class MainActivity extends ActionBarActivity implements LocationListener 
         super.onResume();
         checkPlayServices();
         Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        if (checkPlayServices()) {
-            CameraPosition cameraPosition = new CameraPosition.Builder().target(
-                    new LatLng(location.getLatitude(),location.getLongitude())).zoom(16).build();
 
-            myMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        moveCamera(location);
+
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+
+        HashMap<String,Integer> file_maps = new HashMap<>();
+
+        file_maps.put("image a", R.drawable.a);
+        file_maps.put("image b", R.drawable.b);
+        file_maps.put("image c", R.drawable.c);
+        file_maps.put("image d", R.drawable.d);
+        file_maps.put("image e", R.drawable.e);
+        file_maps.put("image f", R.drawable.f);
+        file_maps.put("image g", R.drawable.g);
+        file_maps.put("image h", R.drawable.h);
+        file_maps.put("image z", R.drawable.z);
+
+
+        for(String name : file_maps.keySet()){
+            TextSliderView textSliderView = new TextSliderView(this);
+            // initialize a SliderLayout
+            textSliderView
+                    .description(name)
+                    .image(file_maps.get(name))
+                    .setScaleType(BaseSliderView.ScaleType.Fit)
+                    .setOnSliderClickListener(this);
+
+            //add your extra information
+            textSliderView.getBundle()
+                    .putString("extra",name);
+
+            mDemoSlider.addSlider(textSliderView);
         }
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
 
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mDemoSlider.removeAllSliders();
     }
 
 
@@ -133,12 +176,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener 
         latitude = location.getLatitude();
         longitude = location.getLongitude();
 
-        if (checkPlayServices()) {
-            CameraPosition cameraPosition = new CameraPosition.Builder().target(
-                    new LatLng(latitude,longitude)).zoom(16).build();
-
-            myMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-        }
+        moveCamera(location);
 
     }
 
@@ -155,5 +193,19 @@ public class MainActivity extends ActionBarActivity implements LocationListener 
     @Override
     public void onProviderDisabled(String provider) {
 
+    }
+
+    @Override
+    public void onSliderClick(BaseSliderView baseSliderView) {
+
+    }
+
+    public void moveCamera(Location location) {
+        if (checkPlayServices()) {
+            CameraPosition cameraPosition = new CameraPosition.Builder().target(
+                    new LatLng(location.getLatitude(),location.getLongitude())).zoom(17).build();
+
+            myMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        }
     }
 }
