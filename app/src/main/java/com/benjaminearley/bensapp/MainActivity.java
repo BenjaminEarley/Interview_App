@@ -11,7 +11,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
-import android.os.Handler;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -133,7 +132,7 @@ public class MainActivity extends ActionBarActivity
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
             }
             catch (IllegalArgumentException e) {
-
+                
             }
 
         }
@@ -308,6 +307,9 @@ public class MainActivity extends ActionBarActivity
 
 
                     }
+                    //add photos to slide
+                    spinner.setVisibility(View.GONE);
+                    setFlickrSlideshowPhotos();
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -339,6 +341,8 @@ public class MainActivity extends ActionBarActivity
         for (int i = 0; i < photos.size(); i++ ){
 
             imageURL = "https://farm" + photos.get(i).farm + ".staticflickr.com/" + photos.get(i).server + "/" + photos.get(i).id + "_" + photos.get(i).secret + "_z.jpg";
+
+
 
             photo_maps.put(i, imageURL);
 
@@ -379,18 +383,8 @@ public class MainActivity extends ActionBarActivity
     }
 
     public void setUpSlideshow() {
-
         getFlickrPhotoData();
         spinner.setVisibility(View.VISIBLE);
-        final Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                spinner.setVisibility(View.GONE);
-                setFlickrSlideshowPhotos();
-            }
-        }, 5000);
-
     }
 
     public void locationSettingsOffAlertDialog() {
