@@ -29,6 +29,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import com.android.volley.Request;
 import com.android.volley.Response;
@@ -57,6 +58,7 @@ public class MainActivity extends ActionBarActivity
     HashMap<Integer, String> photo_maps = new HashMap<>();
     private GoogleMap myMap;
     LocationManager locationManager;
+    private ProgressBar spinner;
     private SliderLayout mDemoSlider;
     private double latitude = 0D;
     private double longitude = 0D;
@@ -80,15 +82,7 @@ public class MainActivity extends ActionBarActivity
                     case R.id.action_refresh:
                         mDemoSlider.removeAllSliders();
                         photos.clear();
-                        getFlickrPhotoData();
-                        final Handler handler = new Handler();
-                        handler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                setFlickrSlideshowPhotos();
-                            }
-                        }, 4000);
-                        return true;
+                        setUpSlideshow();
 
                 }
                 return false;
@@ -97,7 +91,8 @@ public class MainActivity extends ActionBarActivity
 
         toolbar.inflateMenu(R.menu.menu_main);
         mDemoSlider = (SliderLayout)findViewById(R.id.slider);
-
+        spinner = (ProgressBar)findViewById(R.id.progressBar);
+        spinner.setVisibility(View.GONE);
 
 
         if (checkPlayServices()) {
@@ -145,15 +140,7 @@ public class MainActivity extends ActionBarActivity
             alertDialog.show();
         }
 
-        getFlickrPhotoData();
-
-        final Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                setFlickrSlideshowPhotos();
-            }
-        }, 4000);
+        setUpSlideshow();
 
 
     }
@@ -388,6 +375,21 @@ public class MainActivity extends ActionBarActivity
             Log.e("Exception",e.getMessage());
             return null;
         }
+    }
+
+    public void setUpSlideshow() {
+
+        getFlickrPhotoData();
+        spinner.setVisibility(View.VISIBLE);
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                spinner.setVisibility(View.GONE);
+                setFlickrSlideshowPhotos();
+            }
+        }, 5000);
+
     }
 
     public class Photo {
