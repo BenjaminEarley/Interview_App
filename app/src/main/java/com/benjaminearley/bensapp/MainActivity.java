@@ -129,7 +129,12 @@ public class MainActivity extends ActionBarActivity
 
         if (isLocationEnabled(this)) {
             moveCamera(location);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+            try {
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+            }
+            catch (IllegalArgumentException e) {
+
+            }
 
         }
         else {
