@@ -119,8 +119,13 @@ public class MainActivity extends ActionBarActivity
         checkPlayServices();
 
         Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        latitude = location.getLatitude();
-        longitude = location.getLongitude();
+        try {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+        }
+        catch (NullPointerException e) {
+
+        }
 
         if (isLocationEnabled(this)) {
             moveCamera(location);
@@ -128,16 +133,7 @@ public class MainActivity extends ActionBarActivity
 
         }
         else {
-            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-            alertDialog.setTitle("Alert");
-            alertDialog.setMessage("Please Turn On Location Services and Restart App");
-            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                    new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                        }
-                    });
-            alertDialog.show();
+            locationSettingsOffAlertDialog();
         }
 
         setUpSlideshow();
@@ -390,6 +386,19 @@ public class MainActivity extends ActionBarActivity
             }
         }, 5000);
 
+    }
+
+    public void locationSettingsOffAlertDialog() {
+        AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+        alertDialog.setTitle("Alert");
+        alertDialog.setMessage("Please Turn On Location Services and Restart App");
+        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+        alertDialog.show();
     }
 
     public class Photo {
